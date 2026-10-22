@@ -1,61 +1,24 @@
-# Лабораторная работа №2
+# Лабораторная работа №2. Базовые SQL-запросы
 
 ## 1. Наполнение базы данных
+Для массового заполнения таблицы `products` использована функция `generate_series`, которая сгенерировала 1000 строк. (Код находится в файле `lab2.sql`).
 
-В таблицу products было добавлено 1000 строк с помощью функции generate_series.
+## 2. Выборка без дубликатов (DISTINCT) и псевдонимы
+**Назначение:** Вывод уникальных названий и цен товаров, с переименованием столбцов для красоты отчета.
+**Запрос:** `SELECT DISTINCT title AS "Название", price AS "Цена" FROM products LIMIT 5;`
 
-## 2. Вывод без дубликатов (DISTINCT)
+## 3. Фильтрация с AND и OR
+**Назначение:** Вывод товаров, цена которых больше 8000 ИЛИ меньше 2000, при условии, что они относятся к категории 1.
+**Запрос:** `SELECT title, price FROM products WHERE (price > 8000 OR price < 2000) AND category_id = 1 LIMIT 5;`
 
-Запрос:
-```sql
-SELECT DISTINCT title AS "Название", price AS "Цена" FROM products LIMIT 5;
-```
-Назначение: Вывод уникальных названий и цен с использованием псевдонимов.
-
-## 3. Фильтрация по нескольким условиям (AND, OR, скобки)
-
-Запрос:
-```sql
-SELECT title, price 
-FROM products 
-WHERE (price > 8000 OR price < 2000) AND category_id = 1 
-LIMIT 5;
-```
-Назначение: Демонстрация логических операторов. Скобки задают приоритет.
-
-## 4. Предикаты BETWEEN, IN, LIKE, IS NULL
-
-Запрос:
-```sql
-SELECT title, price 
-FROM products 
-WHERE price BETWEEN 3000 AND 5000 
-AND category_id IN (1, 2) 
-AND title LIKE 'Товар%' 
-AND description IS NULL 
-LIMIT 5;
-```
-Назначение: Комплексная фильтрация (диапазон, список, шаблон, пустота).
+## 4. Использование BETWEEN, IN, LIKE и IS NULL
+**Назначение:** Поиск товаров с ценой в диапазоне от 3000 до 5000, из категорий 1 или 2, с названием, начинающимся на "Товар", и без описания.
+**Запрос:** `SELECT title, price FROM products WHERE price BETWEEN 3000 AND 5000 AND category_id IN (1, 2) AND title LIKE 'Товар%' AND description IS NULL LIMIT 5;`
 
 ## 5. Сортировка по двум столбцам
+**Назначение:** Сортировка товаров по цене (от большей к меньшей), а при равной цене — по названию (по алфавиту).
+**Запрос:** `SELECT title, price FROM products ORDER BY price DESC, title ASC LIMIT 5;`
 
-Запрос:
-```sql
-SELECT title, price 
-FROM products 
-ORDER BY price DESC, title ASC 
-LIMIT 5;
-```
-Назначение: Сортировка по цене по убыванию, при равенстве — по названию по возрастанию.
-
-## 6. Постраничный вывод (LIMIT, OFFSET)
-
-Запрос:
-```sql
-SELECT title, price 
-FROM products 
-ORDER BY id 
-LIMIT 5 OFFSET 20;
-```
-Назначение: Пропуск первых 20 строк и вывод следующих 5 (имитация второй страницы).
-
+## 6. Постраничный вывод (LIMIT и OFFSET)
+**Назначение:** Пропуск первых 20 записей и вывод следующих 5 (имитация второй страницы).
+**Запрос:** `SELECT title, price FROM products ORDER BY id LIMIT 5 OFFSET 20;`
