@@ -1,13 +1,20 @@
+-- =========================================================================
+-- ЛАБОРАТОРНАЯ РАБОТА №5. Транзакции, целостность данных и серверная логика
+-- =========================================================================
+
+-- Задание 1: Демонстрация работы транзакций (успешный COMMIT и откат через ROLLBACK)
 BEGIN;
--- Создаем пользователя
 INSERT INTO users (full_name, email, role) VALUES ('Тест Транзакции', 'trx@test.ru', 'buyer');
--- Создаем для него корзину
 INSERT INTO carts (user_id) VALUES ((SELECT id FROM users WHERE email = 'trx@test.ru'));
 COMMIT;
--- Проверяем, что пользователь появился
-SELECT * FROM users WHERE email = 'trx@test.ru';
+
+BEGIN;
+INSERT INTO users (full_name, email, role) VALUES ('Плохой Тест', 'bad@test.ru', 'buyer');
+INSERT INTO non_existent_table (id) VALUES (1); 
+ROLLBACK;
 
 
+-- Задание 2: Создание функции атомарного оформления заказа с проверкой остатков
 CREATE OR REPLACE FUNCTION place_order(p_user_id BIGINT, p_product_id BIGINT, p_qty INT) 
 RETURNS BIGINT AS $$
 DECLARE 
@@ -15,25 +22,21 @@ DECLARE
     v_price NUMERIC;
     v_stock INT;
 BEGIN
-    -- Проверяем остаток на складе
     SELECT quantity INTO v_stock FROM stock WHERE product_id = p_product_id;
+    
     IF v_stock < p_qty THEN
         RAISE EXCEPTION 'Недостаточно товара на складе. В наличии: %, запрошено: %', v_stock, p_qty;
     END IF;
 
-    -- Получаем цену товара
     SELECT price INTO v_price FROM products WHERE id = p_product_id;
 
-    -- Создаем заказ
     INSERT INTO orders (user_id, status, total_amount) 
     VALUES (p_user_id, 'created', v_price * p_qty) 
     RETURNING id INTO v_order_id;
 
-    -- Добавляем позицию в заказ
     INSERT INTO order_items (order_id, product_id, quantity, unit_price) 
     VALUES (v_order_id, p_product_id, p_qty, v_price);
 
-    -- Уменьшаем остаток
     UPDATE stock SET quantity = quantity - p_qty WHERE product_id = p_product_id;
 
     RETURN v_order_id;
@@ -41,8 +44,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 
-
-
+-- Задание 3: Создание функции для расчета сводного показателя (выручки продавца за период)
 CREATE OR REPLACE FUNCTION get_seller_revenue(p_seller_id BIGINT, p_start_date DATE, p_end_date DATE)
 RETURNS NUMERIC AS $$
 DECLARE
@@ -60,8 +62,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 
-
-
+-- Задание 4: Создание триггера аудита для записи изменений цен товаров в журнал
 CREATE TABLE price_audit_log (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     product_id BIGINT,
@@ -69,9 +70,6 @@ CREATE TABLE price_audit_log (
     new_price NUMERIC,
     changed_at TIMESTAMP DEFAULT now()
 );
-
-
-
 
 CREATE OR REPLACE FUNCTION log_price_change() 
 RETURNS TRIGGER AS $$
@@ -84,15 +82,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-
-
 CREATE TRIGGER trg_price_change
 AFTER UPDATE ON products
 FOR EACH ROW EXECUTE FUNCTION log_price_change();
 
 
-
-
+-- Задание 5: Создание триггера денормализации для автоматического пересчета среднего рейтинга товара
 ALTER TABLE products ADD COLUMN IF NOT EXISTS avg_rating NUMERIC(3,2) DEFAULT 0;
 
 CREATE OR REPLACE FUNCTION update_product_rating() 
